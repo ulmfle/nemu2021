@@ -102,7 +102,7 @@ hwaddr_t page_translate(lnaddr_t addr) {
 	assert(pde.present);
 	pte.val = hwaddr_read((pde.page_frame << 12) + sizeof(uint32_t)*((addr >> 12) & ~(~0u << 10)), sizeof(uint32_t)); //attention
 	assert(pte.present);
-	// tlb_replace(addr, pte.val);
+	tlb_replace(addr, pte.val);
 	return (pte.page_frame << 12) + (addr & PAGE_MASK);
 }
 
