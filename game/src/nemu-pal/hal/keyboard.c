@@ -43,8 +43,6 @@ keyboard_event(int scan_code) {
 	/* TODO: Fetch the scancode and update the key states. */
 	int idx, rel = scan_code & 0x80;
 
-	set_bp();
-
 	for (idx = 0; idx < NR_KEYS && get_keycode(idx) != scan_code; ++idx);
 
 	if (key_state[idx] == KEY_STATE_EMPTY)

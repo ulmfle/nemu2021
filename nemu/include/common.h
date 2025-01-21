@@ -12,6 +12,9 @@
 #include "debug.h"
 #include "macro.h"
 
+#define _GNU_SOURCE
+
+#include <features.h>
 #include <stdint.h>
 #include <assert.h>
 #include <string.h>

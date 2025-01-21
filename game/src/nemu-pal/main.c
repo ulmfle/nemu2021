@@ -571,12 +571,12 @@ main_loop() {
 #ifdef PSP
    sdlpal_psp_init();
 #endif
-   PAL_Init(wScreenWidth, wScreenHeight, fFullScreen);set_bp();
+   PAL_Init(wScreenWidth, wScreenHeight, fFullScreen);
 
    //
    // Show the trademark screen and splash screen
    //
-   PAL_TrademarkScreen();set_bp();
+   PAL_TrademarkScreen();
    PAL_SplashScreen();
 
    //
