@@ -15,28 +15,27 @@ void create_video_mapping() {
 	 * [0xa0000, 0xa0000 + SCR_SIZE) for user program. You may define
 	 * some page tables to create this mapping.
 	 */
-	PDE *upd = va_to_pa(get_updir());
+	PDE *upd = get_updir();
 	PTE *kpt = va_to_pa(get_kptable()) + NR_PTE * VMEM_ADDR / PT_SIZE;
 	upd[VMEM_ADDR / PT_SIZE].val = make_pde(kpt);
 }
 
 void video_mapping_write_test() {
 	int i;
-	uint32_t *buf = (void *)VMEM_ADDR;
+	uint8_t *buf = (void *)VMEM_ADDR;
 	for(i = 0; i < SCR_SIZE; i ++) {
-		buf[i] = i;
+		buf[i] = 0x22;
 	}
 }
 
 void video_mapping_read_test() {
 	int i;
-	uint32_t *buf = (void *)VMEM_ADDR;
+	uint8_t *buf = (void *)VMEM_ADDR;
 	for(i = 0; i < SCR_SIZE; i ++) {
-		assert(buf[i] == i);
+		assert(buf[i] == 0x22);
 	}
 }
 
 void video_mapping_clear() {
 	memset((void *)VMEM_ADDR, 0, SCR_SIZE);
 }
-

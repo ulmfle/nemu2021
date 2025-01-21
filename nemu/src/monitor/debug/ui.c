@@ -7,6 +7,11 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 
+#ifdef DEBUG
+#include <setjmp.h>
+extern jmp_buf rbuf;
+extern int rmrk;
+#endif
 void cpu_exec(uint32_t);
 char *get_symbol_name(swaddr_t);
 swaddr_t getsymaddr_addr(swaddr_t, uint8_t);
@@ -22,6 +27,13 @@ char* rl_gets() {
 		line_read = NULL;
 	}
 
+#if defined(DEBUG) && 0
+	if (rmrk) {
+		line_read = (char *)malloc(sizeof("c"));
+		sprintf(line_read, "c");
+		rmrk = false;
+	} else
+#endif
 	line_read = readline("(nemu) ");
 
 	if (line_read && *line_read) {
@@ -58,6 +70,8 @@ static int cmd_page(char *args);
 
 #if defined(DEBUG) && 1
 static int cmd_debug(char *args);
+
+static int cmd_shut(char *args);
 #endif
 
 static int cmd_help(char *args);
@@ -80,7 +94,7 @@ static struct {
 	{ "page", "Show page translate result", cmd_page}
 #ifdef DEBUG
 	,{ "debug", "debug", cmd_debug}
-	//,{ "show", "debug", cmd_show}
+	,{ "shut", "shutdown or restart", cmd_shut}
 #endif
 	/* TODO: Add more commands */
 
@@ -153,7 +167,7 @@ static int cmd_info(char *args) {
                 printf("%s\t\t0x%08x\t\t%d\n", regsl[idx], reg_l(idx), reg_l(idx));
             printf("%s\t\t0x%08x\t\t%d\n", "eip", cpu.eip, cpu.eip);
 			printf("%s\t\t0x%08x\t\t%d\n", "eflags", cpu.eflags.val, cpu.eflags.val);
-#if 1 && defined(DEBUG)
+#if defined(DEBUG) && 1
 			uint64_t sr_hdv;
 			int srlen = sizeof(cpu.sr) / sizeof(cpu.sr[0]);
 			printf("%s\t\t0x%08x\t\t%d\n", "GDTR LIM", cpu.gdtr.limit, cpu.gdtr.limit);
@@ -241,8 +255,6 @@ static int cmd_bt(char *args) {
 		now_ebp += 4;
 		f_args[3] = hwaddr_read(now_ebp, 4);
 
-		// func_addr = ret_addr + (int)swaddr_read(ret_addr - 4, 4);
-		// why sometime no "main" ?
 		func_addr = getsymaddr_addr(ret_addr, (((1) << 4) + ((2) & 0xf)));
 		if (func_addr != 0) printf("#%u ret:0x%08x | %s : ( %u , %u , %u , %u )\n", idx++, ret_addr\
 													  , get_symbol_name(func_addr)\
@@ -276,6 +288,21 @@ static int cmd_debug(char *args) {
 		putchar('\n');
 	}
 	return 0;
+}
+
+static int cmd_shut(char *args) {
+	char ch;
+	if (args!=NULL) sscanf(args, "%c", &ch);
+	switch (ch) {
+		case 'r': {
+			nemu_state = STOP;
+			longjmp(rbuf, 1);
+			break;
+		}
+		case 'q':
+			return cmd_q(NULL);
+		default: assert(0);
+	}
 }
 #endif
 

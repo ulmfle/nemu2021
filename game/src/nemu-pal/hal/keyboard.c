@@ -2,6 +2,9 @@
 
 #define NR_KEYS 18
 
+//new
+#define I8042_DATA_PORT 0x60
+
 enum {KEY_STATE_EMPTY, KEY_STATE_WAIT_RELEASE, KEY_STATE_RELEASE, KEY_STATE_PRESS};
 
 /* Only the following keys are used in NEMU-PAL. */
@@ -14,34 +17,23 @@ static const int keycode_array[] = {
 
 static int key_state[NR_KEYS];
 
+static inline bool
+get_key_real(int scan_code, int *real_code_ret)
+{
+	*real_code_ret = scan_code & ~0x80;
+	return !!(scan_code & 0x80);
+}
+
 void
-keyboard_event(void) {
+keyboard_event() {
 	/* TODO: Fetch the scancode and update the key states. */
-	assert(0);
-}
+	int idx;
+	int scan_code = in_byte(I8042_DATA_PORT);
+	bool keyup = get_key_real(scan_code, &scan_code);
 
-static inline int
-get_keycode(int index) {
-	assert(index >= 0 && index < NR_KEYS);
-	return keycode_array[index];
-}
+	for (idx = 0; idx < NR_KEYS && keycode_array[idx] != scan_code; ++idx);
 
-static inline int
-query_key(int index) {
-	assert(index >= 0 && index < NR_KEYS);
-	return key_state[index];
-}
-
-static inline void
-release_key(int index) {
-	assert(index >= 0 && index < NR_KEYS);
-	key_state[index] = KEY_STATE_WAIT_RELEASE;
-}
-
-static inline void
-clear_key(int index) {
-	assert(index >= 0 && index < NR_KEYS);
-	key_state[index] = KEY_STATE_EMPTY;
+	key_state[idx] = keyup ? KEY_STATE_RELEASE : KEY_STATE_PRESS;
 }
 
 bool 
@@ -55,7 +47,22 @@ process_keys(void (*key_press_callback)(int), void (*key_release_callback)(int))
 	 * Remember to enable interrupts before returning from the function.
 	 */
 
-	assert(0);
+	int idx;
+	for (idx = 0; idx < NR_KEYS; ++idx) {
+		if (key_state[idx] == KEY_STATE_PRESS) {
+			key_press_callback(keycode_array[idx]);
+			key_state[idx] = KEY_STATE_WAIT_RELEASE;
+		} else if (key_state[idx] == KEY_STATE_RELEASE) {
+			key_release_callback(keycode_array[idx]);
+			key_state[idx] = KEY_STATE_EMPTY;
+		} else {
+			continue;
+		}
+
+		sti();
+		return 1;
+	}
+
 	sti();
-	return false;
+	return 0;
 }

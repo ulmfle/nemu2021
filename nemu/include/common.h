@@ -6,12 +6,15 @@
 /* You will define this macro in PA4 */
 #define HAS_DEVICE
 
-#define DEBUG
+// #define DEBUG
 #define LOG_FILE
 
 #include "debug.h"
 #include "macro.h"
 
+#define _GNU_SOURCE
+
+#include <features.h>
 #include <stdint.h>
 #include <assert.h>
 #include <string.h>

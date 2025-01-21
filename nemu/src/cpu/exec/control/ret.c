@@ -10,8 +10,9 @@ make_helper(ret) {
     return 1;
 }
 
-make_helper(ret_l) {
-    decode_i_l(eip + 1);
+//attention
+make_helper(ret_w) {
+    decode_i_w(eip + 1);
     uint32_t addr = swaddr_read(cpu.esp, 4, SR_SS);
     cpu.esp += 4;
     cpu.eip = addr - 3;

@@ -29,7 +29,6 @@ uint32_t mm_brk(uint32_t new_brk) {
 
 	// If new_brk == 0, the brk() syscall should fail and return
 	// the current break. See the NOTE of `man 2 brk' for details.
-
 	return cur_brk;
 }
 

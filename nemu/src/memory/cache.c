@@ -56,7 +56,7 @@ typedef struct Cache {
 
 static uint8_t l1_buf[NR_CL1_BLOCK][CB_SIZE];
 static uint8_t l2_buf[NR_CL2_BLOCK][CB_SIZE];
-static uint8_t tlb_buf[NR_TLBE][sizeof(uint32_t)];
+static uint8_t tlb_buf[NR_TLBE][sizeof(hwaddr_t)];
 static CB l1_block[NR_CL1_BLOCK];
 static CB l2_block[NR_CL2_BLOCK];
 static CB tlb_entry[NR_TLBE];
@@ -66,7 +66,8 @@ Cache l1, l2;
 static CB *normal_check_hit(CB *cb_lst, size_t len, uint32_t _tag) {
     int idx;
     for (idx = 0; idx < len; ++idx) {
-        if (cb_lst[idx].valid && cb_lst[idx].tag == _tag) return (cb_lst + idx);
+        if (cb_lst[idx].valid && cb_lst[idx].tag == _tag)
+            return (cb_lst + idx);
     }
     return NULL;
 }
@@ -194,6 +195,10 @@ static void init_cache_internal() {
     l2.check_write_hit = l2_check_write_hit;
     l1.read_replace = l1.write_replace = l1_replace;
     l2.read_replace = l2.write_replace = l2_replace;
+
+    memset(l1_buf, 0, NR_CL1_BLOCK * CB_SIZE);
+    memset(l2_buf, 0, NR_CL2_BLOCK * CB_SIZE);
+    memset(tlb_buf, 0, NR_TLBE * sizeof(hwaddr_t));
 
     int l1_idx;
     for (l1_idx = 0; l1_idx < NR_CL1_BLOCK; ++l1_idx) {

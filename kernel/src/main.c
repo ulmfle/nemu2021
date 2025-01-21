@@ -32,6 +32,7 @@ void init() {
 
 	/* Jump to init_cond() to continue initialization. */
 	asm volatile("jmp *%0" : : "r"(init_cond));
+	// init_cond();
 
 	panic("should not reach here");
 }

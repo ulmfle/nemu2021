@@ -11,13 +11,13 @@ void pop32(uint32_t *dst) {
 }
 
 void push64(uint64_t *src) {
-    push32(&(((uint32_t *)src)[0]));
     push32(&(((uint32_t *)src)[1]));
+    push32(&(((uint32_t *)src)[0]));
 }
 
 void pop64(uint64_t *dst) {
-    pop32(&(((uint32_t *)dst)[1]));
     pop32(&(((uint32_t *)dst)[0]));
+    pop32(&(((uint32_t *)dst)[1]));
 }
 
 void raise_intr(uint8_t NO) {

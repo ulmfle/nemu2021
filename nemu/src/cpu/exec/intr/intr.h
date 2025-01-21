@@ -6,8 +6,8 @@
 extern jmp_buf jbuf;
 
 typedef struct {
+    uint16_t sel;
     uint32_t ptr;
-	uint16_t sel;
 } _lptr;
 
 void raise_intr(uint8_t);

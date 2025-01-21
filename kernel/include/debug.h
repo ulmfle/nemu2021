@@ -24,6 +24,6 @@ do { \
 		panic("Assertion failed: %s", #cond); \
 	} \
 } while(0)
-		
+
 
 #endif

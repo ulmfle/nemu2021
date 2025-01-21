@@ -71,14 +71,12 @@ void ide_io_handler(ioaddr_t addr, size_t len, bool is_write) {
 			/* read 4 bytes data from disk */
 			assert(!ide_write);
 			ret = fread(ide_port_base, 4, 1, disk_fp);
-			//printf("[%08x]", *(uint32_t *)ide_port_base);
 			assert(ret == 1 || feof(disk_fp));
 
 			byte_cnt += 4;
 			if(byte_cnt == 512) {
 				/* finish */
 				ide_port_base[7] = 0x40;
-				//printf("[|]\n");
 			}
 		}
 	}

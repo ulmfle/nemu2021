@@ -120,7 +120,7 @@ PAL_Init(
    {
       TerminateOnError("Could not initialize global data: %d.\n", e);
    }
-   Log("PAL_InitGolbals success");
+   Log("PAL_InitGlobals success");
 
    e = PAL_InitFont();
    if (e != 0)

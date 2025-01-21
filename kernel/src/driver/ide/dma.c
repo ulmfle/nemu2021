@@ -5,9 +5,6 @@
 #define BMR_PORT 0xc040
 
 /* TODO: define the PRDT here */
-
-
-
 void
 dma_prepare(void *buf) {
 	/* TODO:

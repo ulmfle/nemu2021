@@ -1,5 +1,6 @@
 #include "common.h"
 #include <sys/ioctl.h>
+#include <string.h>
 
 typedef struct {
 	char *name;
@@ -35,6 +36,98 @@ int fs_ioctl(int fd, uint32_t request, void *p) {
 
 void ide_read(uint8_t *, uint32_t, uint32_t);
 void ide_write(uint8_t *, uint32_t, uint32_t);
-
 /* TODO: implement a simplified file system here. */
 
+typedef struct {
+	bool opened;
+	uint32_t offset;
+} Fstate;
+
+Fstate fstate[NR_FILES + 3];
+
+static inline Fstate *state(int fd) {
+	return &fstate[fd];
+}
+
+static inline int valid(int fd) {
+	assert(fd >= 3 && fd < NR_FILES + 3);
+	return state(fd)->opened;
+}
+
+static inline const file_info *query(int fd) {
+	valid(fd);
+	return &file_table[fd - 3];
+}
+
+static inline int overflow(int fd, int len) {
+	assert(valid(fd));
+	int of = state(fd)->offset + len - query(fd)->size;
+	return (of > 0 ? of : 0);
+}
+
+int fs_open(const char *pathname, int flags) {
+	int idx;
+	int lqn, lpn = strlen(pathname);
+	for (idx = 3; idx < NR_FILES + 3; ++idx) {
+		lqn = strlen(query(idx)->name);
+		if (lpn >= lqn && strcmp(query(idx)->name, pathname + lpn - lqn) == 0) {
+			state(idx)->opened = true;
+			state(idx)->offset = 0;
+			break;
+		}
+	}
+
+	assert(valid(idx));
+	return idx;
+}
+
+int fs_read(int fd, void *buf, int len) {
+	if (!valid(fd)) return -1;
+	len -= overflow(fd, len);
+
+	int real_off = query(fd)->disk_offset + state(fd)->offset;
+	ide_read(buf, real_off, len);
+	state(fd)->offset += len;
+	return len;
+}
+
+int fs_write(int fd, void *buf, int len) {
+	if (!valid(fd)) return -1;
+	len -= overflow(fd, len);
+
+	int real_off = query(fd)->disk_offset + state(fd)->offset;
+	ide_write(buf, real_off, len);
+	state(fd)->offset += len;
+	return len;
+}
+
+int fs_lseek(int fd, int offset, int whence) {
+	if (!valid(fd)) return -1;
+
+	int res = state(fd)->offset;
+	state(fd)->offset = 0;
+	switch (whence) {
+		case SEEK_SET:
+			res = offset;
+			break;
+		case SEEK_CUR:
+			res += offset;
+			break;
+		case SEEK_END:
+			res = offset + query(fd)->size - 1;
+			break;
+		default:
+			return -1;
+	}
+
+	res -= overflow(fd, res);
+	return state(fd)->offset = res;
+}
+
+int fs_close(int fd) {
+	if (!valid(fd)) return -1;
+
+	state(fd)->opened = false;
+	state(fd)->offset = 0;
+	return 0;
+}

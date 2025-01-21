@@ -41,6 +41,9 @@ typedef struct {
 } RB;
 
 RB rowbufs[NR_RANK][NR_BANK];
+#ifdef DEBUG
+const int hw_mem_siz = HW_MEM_SIZE;
+#endif
 
 void init_ddr3() {
 	int i, j;

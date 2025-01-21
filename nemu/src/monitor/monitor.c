@@ -85,6 +85,11 @@ static void load_entry() {
 }
 
 void restart() {
+#ifdef DEBUG
+	extern int hw_mem_siz;
+	memset(hw_mem, 0, hw_mem_siz);
+#endif
+
 	/* Perform some initialization to restart a program */
 #ifdef USE_RAMDISK
 	/* Read the file with name `argv[1]' into ramdisk. */

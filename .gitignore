@@ -11,6 +11,5 @@
 !testcase/user.ld
 nemu/tags
 .vscode
-nemu/.vscode
-kernel/.vscode
-game/.vscode
+**/.vscode
+game/src/nemu-pal/data

@@ -15,7 +15,11 @@ prepare_buffer(void) {
 
 void
 display_buffer(void) {
-	asm volatile ("cld; rep movsl" : : "c"(SCR_SIZE / 4), "S"(vmem), "D"(VMEM_ADDR));
+	asm volatile ("cld\n\t"
+				  "rep movsl"
+				  :
+				  : "c"(SCR_SIZE / 4), "S"(vmem), "D"(VMEM_ADDR)
+	);
 }
 
 static inline void

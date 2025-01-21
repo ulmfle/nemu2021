@@ -24,12 +24,20 @@ void SDL_BlitSurface(SDL_Surface *src, SDL_Rect *srcrect,
 		dstrect->h = h;
 	}
 
+	int _h,_w;
+	for (_h = 0; _h < h; ++_h)
+	{
+		for (_w = 0; _w < w; ++_w)
+		{
+			dst->pixels[(dy + _h) * dst->pitch + dx + _w] = src->pixels[(sy + _h) * src->pitch + sx + _w];
+		}
+	}
 	/* TODO: copy pixels from position (`sx', `sy') with size
 	 * `w' X `h' of `src' surface to position (`dx', `dy') of
 	 * `dst' surface.
 	 */
 
-	assert(0);
+	//assert(0);
 }
 
 void SDL_FillRect(SDL_Surface *dst, SDL_Rect *dstrect, uint32_t color) {
@@ -40,8 +48,24 @@ void SDL_FillRect(SDL_Surface *dst, SDL_Rect *dstrect, uint32_t color) {
 	 * in surface `dst' with color `color'. If dstrect is
 	 * NULL, fill the whole surface.
 	 */
+	int dx,dy,w,h;
+	dx = (dstrect == NULL ? 0 : dstrect->x);
+	dy = (dstrect == NULL ? 0 : dstrect->y);
+	w = (dstrect == NULL ? dst->w : dstrect->w);
+	h = (dstrect == NULL ? dst->h : dstrect->h);
+	if(dst->w - dx < w) { w = dst->w - dx; }
+	if(dst->h - dy < h) { h = dst->h - dy; }
 
-	assert(0);
+	int x,y;
+	for (y = dy; y < dy + h; ++y)
+	{
+		for (x = dx; x < dx + w; ++x)
+		{
+			dst->pixels[y * dst->pitch + x] = color;
+		}
+	}
+
+	// assert(0);
 }
 
 void SDL_SetPalette(SDL_Surface *s, int flags, SDL_Color *colors, 
@@ -70,7 +94,8 @@ void SDL_SetPalette(SDL_Surface *s, int flags, SDL_Color *colors,
 
 	if(s->flags & SDL_HWSURFACE) {
 		/* TODO: Set the VGA palette by calling write_palette(). */
-		assert(0);
+		write_palette(colors, ncolors);
+		//assert(0);
 	}
 }
 
