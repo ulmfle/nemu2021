@@ -16,6 +16,8 @@
 
 #include "bit/bt.h"
 
+#include "convert/cvt.h"
+
 #include "arith/adc.h"
 #include "arith/add.h"
 #include "arith/dec.h"
