@@ -129,7 +129,7 @@ PAL_InitText(
    //
    i = PAL_MKFGetChunkSize(3, gpGlobals->f.fpSSS) / sizeof(DWORD);
    g_TextLib.nMsgs = i - 1;
-   g_TextLib.lpMsgOffset = (LPDWORD)malloc(i * sizeof(DWORD)); //pnt
+   g_TextLib.lpMsgOffset = (LPDWORD)malloc(i * sizeof(DWORD));
    if (g_TextLib.lpMsgOffset == NULL)
    {
       free(g_TextLib.lpWordBuf);
