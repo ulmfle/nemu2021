@@ -135,7 +135,6 @@ PAL_Init(
       TerminateOnError("Could not initialize UI subsystem: %d.\n", e);
    }
    Log("PAL_InitUI success");
-
    e = PAL_InitText();
    if (e != 0)
    {
