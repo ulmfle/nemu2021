@@ -128,6 +128,7 @@ PAL_InitText(
    // Read the message offsets. The message offsets are in SSS.MKF #3
    //
    i = PAL_MKFGetChunkSize(3, gpGlobals->f.fpSSS) / sizeof(DWORD);
+   Log("dbp %d", i);
    g_TextLib.nMsgs = i - 1;
    g_TextLib.lpMsgOffset = (LPDWORD)malloc(i * sizeof(DWORD)); //pnt
    if (g_TextLib.lpMsgOffset == NULL)
