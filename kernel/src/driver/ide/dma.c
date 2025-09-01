@@ -5,6 +5,15 @@
 #define BMR_PORT 0xc040
 
 /* TODO: define the PRDT here */
+
+struct PhysicalRegionDescriptorTable {
+	void *address;
+	uint16_t byte_cnt;
+	uint16_t eot;
+} prdt = {
+	NULL, 512, 0x8000
+};
+
 void
 dma_prepare(void *buf) {
 	/* TODO:
@@ -22,8 +31,8 @@ dma_prepare(void *buf) {
 	 *
 	 * NOTE: All addresses seen by devices are physical.
 	 */
-
-	panic("please implement me");
+	prdt.address = buf;
+	out_long(BMR_PORT + 4, (uint32_t)&prdt);
 }
 
 void
