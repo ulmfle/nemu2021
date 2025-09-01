@@ -31,8 +31,8 @@ dma_prepare(void *buf) {
 	 *
 	 * NOTE: All addresses seen by devices are physical.
 	 */
-	prdt.address = buf;
-	out_long(BMR_PORT + 4, (uint32_t)&prdt);
+	prdt.address = va_to_pa(buf);
+	out_long(BMR_PORT + 4, (uint32_t)va_to_pa(&prdt));
 }
 
 void
