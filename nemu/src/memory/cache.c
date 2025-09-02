@@ -282,6 +282,17 @@ void cache_write(hwaddr_t addr, uint32_t data, size_t len) {
 }
 
 //main
+void cache_all_refresh() {
+    int idx = 0;
+    for (idx = 0; idx < NR_CL1_BLOCK; idx++) {
+        l1_block[idx].valid = 0;
+    }
+    for (idx = 0; idx < NR_CL2_BLOCK; idx++) {
+        l2_block[idx].valid = 0;
+    }
+}
+
+//main
 uint32_t tlb_read(lnaddr_t addr, bool *hit) {
     CB *dst_cb = tlb_check_read_hit(addr);
     if (dst_cb == NULL) {
