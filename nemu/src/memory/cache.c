@@ -12,14 +12,15 @@ uint32_t tlb_read(lnaddr_t, bool *);
 void tlb_replace(lnaddr_t, uint32_t);
 int tlb_flush();
 
+#define SUM_WIDTH (sizeof(hwaddr_t) << 3)
 #define CB_SIZE_WIDTH 6
 #define NR_CL1_BLOCK_WIDTH 10
 #define NR_CL2_BLOCK_WIDTH 12
 #define NR_TLBE_WIDTH 6
 #define ASSOC_CL1_WIDTH 3
 #define ASSOC_CL2_WIDTH 4
-#define TAG_CL1_WIDTH (32 - CB_SIZE_WIDTH - NR_CL1_BLOCK_WIDTH + ASSOC_CL1_WIDTH)
-#define TAG_CL2_WIDTH (32 - CB_SIZE_WIDTH - NR_CL2_BLOCK_WIDTH + ASSOC_CL2_WIDTH)
+#define TAG_CL1_WIDTH (SUM_WIDTH - CB_SIZE_WIDTH - NR_CL1_BLOCK_WIDTH + ASSOC_CL1_WIDTH)
+#define TAG_CL2_WIDTH (SUM_WIDTH - CB_SIZE_WIDTH - NR_CL2_BLOCK_WIDTH + ASSOC_CL2_WIDTH)
 #define TAG_WIDTH(level) concat3(TAG_CL, level, _WIDTH)
 
 #define CB_SIZE (1 << CB_SIZE_WIDTH)
@@ -29,27 +30,28 @@ int tlb_flush();
 #define ASSOC_CL1 (1 << ASSOC_CL1_WIDTH)
 #define ASSOC_CL2 (1 << ASSOC_CL2_WIDTH)
 
-#define CT_MASK(level) (~0u << (32 - TAG_WIDTH(level)))
+#define CT_MASK(level) (~0u << (SUM_WIDTH - TAG_WIDTH(level)))
 #define CO_MASK (CB_SIZE - 1)
 #define CI_MASK(level) (((~0u) ^ (CT_MASK(level))) ^ (CO_MASK))
-#define TLB_TAG_MASK (~0u << 12)
 
-#define GET_CT(addr, level) (((addr) & CT_MASK(level)) >> (32 - TAG_WIDTH(level)))
-#define GET_CI(addr, level) (((addr) & CI_MASK(level)) >> CB_SIZE_WIDTH)
+#define GET_CT(level, addr) (((addr) & CT_MASK(level)) >> (SUM_WIDTH - TAG_WIDTH(level)))
+#define GET_CI(level, addr) (((addr) & CI_MASK(level)) >> CB_SIZE_WIDTH)
 #define GET_CO(addr) ((addr) & CO_MASK)
-#define GET_TLB_TAG(addr) (((addr) & TLB_TAG_MASK) >> 12)
+#define GET_TLB_TAG(addr) (((addr) & (~0u << 12)) >> 12)
 
-#define ASSOC(level) ((CB (*)[concat(ASSOC_CL, level)])(this->cb_pool))
+#define ASSOC(level, poolp) ((CB (*)[concat(ASSOC_CL, level)])(poolp))
 
-typedef struct CB {
+typedef struct CacheBlock {
     void *buf;
-
     uint32_t tag;
     bool valid;
     bool dirty;
-    uint32_t (*read)(struct CB *, uint8_t, size_t);
-    void (*write)(struct CB *, uint8_t, uint8_t *, size_t);
 } CB;
+
+struct CacheBlockFunc {
+    uint32_t (*read)(CB *, uint8_t, size_t);
+    void (*write)(CB *, uint8_t, uint8_t *, size_t);
+} block;
 
 typedef struct Cache {
     void *cb_pool;
@@ -70,15 +72,7 @@ static CB l2_block[NR_CL2_BLOCK];
 static CB tlb_entry[NR_TLBE];
 Cache l1, l2;
 const Caches caches = {
-    {
-        cache_read, 
-        cache_write, 
-        cache_all_refresh
-    }, {
-        tlb_read,
-        tlb_replace,
-        tlb_flush
-    }
+    {cache_read, cache_write, cache_all_refresh}, {tlb_read, tlb_replace, tlb_flush}
 };
 
 //stand-alone
@@ -148,7 +142,7 @@ static uint32_t cread(Cache *this, hwaddr_t addr, size_t len, bool *hit) {
         return 0;
     }
     *hit = true;
-    return cb->read(cb, GET_CO(addr), len);
+    return block.read(cb, GET_CO(addr), len);
 }
 
 //base
@@ -159,36 +153,36 @@ static void cwrite(Cache *this, hwaddr_t addr, uint32_t data, size_t len, bool *
         return;
     }
     *hit = true;
-    cb->write(cb, GET_CO(addr), (uint8_t *)&data, len);
+    block.write(cb, GET_CO(addr), (uint8_t *)&data, len);
 }
 
 static CB *l1_check_hit(Cache *this, hwaddr_t addr) {
-    return normal_check_hit(ASSOC(1)[GET_CI(addr, 1)], ASSOC_CL1, GET_CT(addr, 1));
+    return normal_check_hit(ASSOC(1, this->cb_pool)[GET_CI(1, addr)], ASSOC_CL1, GET_CT(1, addr));
 }
 
 static CB *l2_check_read_hit(Cache *this, hwaddr_t addr) {
-    return normal_check_hit(ASSOC(2)[GET_CI(addr, 2)], ASSOC_CL2, GET_CT(addr, 2));
+    return normal_check_hit(ASSOC(2, this->cb_pool)[GET_CI(2, addr)], ASSOC_CL2, GET_CT(2, addr));
 }
 
 static CB *l2_check_write_hit(Cache *this, hwaddr_t addr) {
-    CB *ret = normal_check_hit(ASSOC(2)[GET_CI(addr, 2)], ASSOC_CL2, GET_CT(addr, 2));
+    CB *ret = normal_check_hit(ASSOC(2, this->cb_pool)[GET_CI(2, addr)], ASSOC_CL2, GET_CT(2, addr));
     if (ret != NULL) ret->dirty = 1;
     return ret;
 }
 
 static void l1_replace(Cache *this, hwaddr_t addr) {
-    CB *dst_cb = normal_find_replace(ASSOC(1)[GET_CI(addr, 1)], ASSOC_CL1);
+    CB *dst_cb = normal_find_replace(ASSOC(1, this->cb_pool)[GET_CI(1, addr)], ASSOC_CL1);
     CB *src_cb = l2.check_read_hit(&l2, addr);
-    dst_cb->tag = GET_CT(addr, 1);
+    dst_cb->tag = GET_CT(1, addr);
     dst_cb->valid = 1;
-    dst_cb->write(dst_cb, 0, src_cb->buf, CB_SIZE);
+    block.write(dst_cb, 0, src_cb->buf, CB_SIZE);
 }
 
 static void l2_replace(Cache *this, hwaddr_t addr) {
-    CB *dst_cb = find_and_writeback(ASSOC(2)[GET_CI(addr, 2)], addr, ASSOC_CL2, TAG_WIDTH(2));
-    dst_cb->tag = GET_CT(addr, 2);
+    CB *dst_cb = find_and_writeback(ASSOC(2, this->cb_pool)[GET_CI(2, addr)], addr, ASSOC_CL2, TAG_WIDTH(2));
+    dst_cb->tag = GET_CT(2, addr);
     dst_cb->valid = 1;
-    dst_cb->write(dst_cb, 0, hwa_to_va((addr - GET_CO(addr))), CB_SIZE);
+    block.write(dst_cb, 0, hwa_to_va((addr - GET_CO(addr))), CB_SIZE);
 }
 
 static CB *tlb_check_read_hit(lnaddr_t addr) {
@@ -199,13 +193,13 @@ static void tlb_read_replace(lnaddr_t addr, hwaddr_t res) {
     CB *dst_cb = normal_find_replace(tlb_entry, NR_TLBE);
     dst_cb->tag = GET_TLB_TAG(addr);
     dst_cb->valid = 1;
-    dst_cb->write(dst_cb, 0, (uint8_t *)&res, 4);
+    block.write(dst_cb, 0, (uint8_t *)&res, 4);
 }
 
 //main
 static void init_cache_internal() {
-    l1.cb_pool = (void *)l1_block;
-    l2.cb_pool = (void *)l2_block;
+    l1.cb_pool = &l1_block;
+    l2.cb_pool = &l2_block;
     l1.read = l2.read = cread;
     l1.write = l2.write = cwrite;
     l1.check_read_hit = l1.check_write_hit =  l1_check_hit;
@@ -213,24 +207,18 @@ static void init_cache_internal() {
     l2.check_write_hit = l2_check_write_hit;
     l1.read_replace = l1.write_replace = l1_replace;
     l2.read_replace = l2.write_replace = l2_replace;
-
-    memset(l1_buf, 0, NR_CL1_BLOCK * CB_SIZE);
-    memset(l2_buf, 0, NR_CL2_BLOCK * CB_SIZE);
-    memset(tlb_buf, 0, NR_TLBE * sizeof(hwaddr_t));
+    block.read = cbread;
+    block.write = cbwrite;
 
     int l1_idx;
     for (l1_idx = 0; l1_idx < NR_CL1_BLOCK; ++l1_idx) {
         l1_block[l1_idx].buf = l1_buf[l1_idx];
-        l1_block[l1_idx].read = cbread;
-        l1_block[l1_idx].write = cbwrite;
         l1_block[l1_idx].valid = 0;
     }
 
     int l2_idx;
     for (l2_idx = 0; l2_idx < NR_CL2_BLOCK; ++l2_idx) {
         l2_block[l2_idx].buf = l2_buf[l2_idx];
-        l2_block[l2_idx].read = cbread;
-        l2_block[l2_idx].write = cbwrite;
         l2_block[l2_idx].valid = 0;
         l2_block[l2_idx].dirty = 0;
     }
@@ -238,8 +226,6 @@ static void init_cache_internal() {
     int tlb_idx;
     for (tlb_idx = 0; tlb_idx < NR_TLBE; ++tlb_idx) {
         tlb_entry[tlb_idx].buf = tlb_buf[tlb_idx];
-        tlb_entry[tlb_idx].read = cbread;
-        tlb_entry[tlb_idx].write = cbwrite;
         tlb_entry[tlb_idx].valid = 0;
     }
 }
@@ -295,16 +281,18 @@ void cache_write(hwaddr_t addr, uint32_t data, size_t len) {
 
 //main
 void cache_all_refresh() {
-    int idx = 0;
+    int idx, jdx;
     for (idx = 0; idx < NR_CL1_BLOCK; idx++) {
         l1_block[idx].valid = 0;
     }
-    for (idx = 0; idx < NR_CL2_BLOCK; idx++) {
-        CB *src = &l2_block[idx];
-        if (src->dirty) {
-            memcpy(&hw_mem[src->tag], src->buf, CB_SIZE);
+    for (idx = 0; idx < SUM_WIDTH - TAG_WIDTH(2) - CB_SIZE_WIDTH; idx++) {
+        for (jdx = 0; jdx < ASSOC_CL2; jdx++) {
+            CB *src = ASSOC(2, &l2_block)[idx];
+            if (src->dirty) {
+                memcpy(&hw_mem[(src->tag << (SUM_WIDTH - TAG_WIDTH(2))) + (idx << CB_SIZE_WIDTH)], src->buf, CB_SIZE);
+            }
+            src->valid = 0;
         }
-        l2_block[idx].valid = 0;
     }
 }
 
@@ -316,7 +304,7 @@ uint32_t tlb_read(lnaddr_t addr, bool *hit) {
         return 0;
     }
     *hit = true;
-    return dst_cb->read(dst_cb, 0, sizeof(hwaddr_t));
+    return block.read(dst_cb, 0, sizeof(hwaddr_t));
 }
 
 //main
