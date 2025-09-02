@@ -285,7 +285,7 @@ void cache_all_refresh() {
     for (idx = 0; idx < NR_CL1_BLOCK; idx++) {
         l1_block[idx].valid = 0;
     }
-    for (idx = 0; idx < SUM_WIDTH - TAG_WIDTH(2) - CB_SIZE_WIDTH; idx++) {
+    for (idx = 0; idx < (1 << (SUM_WIDTH - TAG_WIDTH(2) - CB_SIZE_WIDTH)); idx++) {
         for (jdx = 0; jdx < ASSOC_CL2; jdx++) {
             CB *src = ASSOC(2, &l2_block)[idx];
             if (src->dirty) {
