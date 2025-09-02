@@ -289,7 +289,8 @@ void cache_all_refresh() {
         for (jdx = 0; jdx < ASSOC_CL2; jdx++) {
             CB *src = ASSOC(2, &l2_block)[idx];
             if (src->dirty) {
-                memcpy(&hw_mem[(src->tag << (SUM_WIDTH - TAG_WIDTH(2))) + (idx << CB_SIZE_WIDTH)], src->buf, CB_SIZE);
+                uint32_t ptr = (src->tag << (SUM_WIDTH - TAG_WIDTH(2))) + (idx << CB_SIZE_WIDTH);
+                memcpy(&hw_mem[ptr], src->buf, CB_SIZE);
             }
             src->valid = 0;
         }
