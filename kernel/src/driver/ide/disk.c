@@ -1,7 +1,7 @@
 #include "common.h"
 #include "x86.h"
 
-#define USE_DMA_READ
+// #define USE_DMA_READ
 
 #define IDE_PORT_BASE   0x1F0
 
