@@ -270,9 +270,11 @@ uint32_t cache_read(hwaddr_t addr, size_t len) {
     if (hit_l2 != 0) {
         l1.read_replace(&l1, addr);
         return val;
+    } else {
+        l2.read_replace(&l2, addr);
+        cache_read(addr, len);
     }
-    l2.read_replace(&l2, addr);
-    cache_read(addr, len);
+    panic("Should not reach here.");
     return 0;
 }
 
