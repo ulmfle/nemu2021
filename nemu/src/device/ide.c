@@ -112,7 +112,7 @@ void bmr_io_handler(ioaddr_t addr, size_t len, bool is_write) {
 
 					/* finish */
 					ide_port_base[7] = 0x40;
-					// caches.std.refresh();
+					caches.std.refresh();
 					i8259_raise_intr(IDE_IRQ);
 				}
 				else {
