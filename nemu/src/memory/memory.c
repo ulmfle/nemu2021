@@ -1,14 +1,9 @@
 #include "common.h"
 #include "cpu/reg.h"
 #include "memory/memory.h"
+#include "memory/cache.h"
 #include "device/mmio.h"
 
-uint32_t cache_read(hwaddr_t, size_t, bool *);
-void cache_replace(hwaddr_t, size_t);
-void cache_write(hwaddr_t, uint32_t, size_t);
-uint32_t tlb_read(lnaddr_t, bool *);
-void tlb_replace(lnaddr_t, uint32_t);
-int tlb_flush();
 uint32_t dram_read(hwaddr_t, size_t);
 void dram_write(hwaddr_t, size_t, uint32_t);
 lnaddr_t seg_translate(swaddr_t, uint8_t);
@@ -24,15 +19,7 @@ uint32_t hwaddr_read(hwaddr_t addr, size_t len) {
 		return mmio_read(addr, len, map) & (~0u >> ((4 - len) << 3));
 	}
 #endif
-	uint32_t val;
-	bool cache_hit;
-	val = cache_read(addr, len, &cache_hit);
-
-	if (cache_hit == false) {
-		val = cache_read(addr, len, &cache_hit);
-		// val = dram_read(addr, len) & (~0u >> ((4 - len) << 3));
-	}
-	return val;
+	return caches.std.read(addr, len);
 }
 
 void hwaddr_write(hwaddr_t addr, size_t len, uint32_t data) {
@@ -44,7 +31,7 @@ void hwaddr_write(hwaddr_t addr, size_t len, uint32_t data) {
 	}
 #endif
 	// dram_write(addr, len, data);
-	cache_write(addr, data, len);
+	caches.std.write(addr, data, len);
 }
 
 uint32_t lnaddr_read(lnaddr_t addr, size_t len) {
@@ -97,8 +84,8 @@ hwaddr_t page_translate(lnaddr_t addr) {
 	bool hit = 0;
 	PDE pde;
 	PTE pte;
-	pte.val = tlb_read(addr, &hit);
-	int f_ret = tlb_flush();
+	pte.val = caches.tlb.read(addr, &hit);
+	int f_ret = caches.tlb.flush();
 	if (hit == true && f_ret == false)
 		return (pte.page_frame << 12) + (addr & PAGE_MASK);
 
@@ -106,7 +93,7 @@ hwaddr_t page_translate(lnaddr_t addr) {
 	assert(pde.present);
 	pte.val = hwaddr_read((pde.page_frame << 12) + sizeof(PTE)*((addr >> 12) & ~(~0u << 10)), sizeof(PTE));
 	assert(pte.present);
-	tlb_replace(addr, pte.val);
+	caches.tlb.replace(addr, pte.val);
 	return (pte.page_frame << 12) + (addr & PAGE_MASK);
 }
 

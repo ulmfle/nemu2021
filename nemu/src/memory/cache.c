@@ -1,8 +1,16 @@
 #include "common.h"
 #include "cpu/reg.h"
+#include "memory/cache.h"
 #include "memory/memory.h"
 #include <stdlib.h>
 #include <time.h>       //for random
+
+uint32_t cache_read(hwaddr_t, size_t);
+void cache_write(hwaddr_t, uint32_t, size_t);
+void cache_all_refresh();
+uint32_t tlb_read(lnaddr_t, bool *);
+void tlb_replace(lnaddr_t, uint32_t);
+int tlb_flush();
 
 #define CB_SIZE_WIDTH 6
 #define NR_CL1_BLOCK_WIDTH 10
@@ -61,6 +69,17 @@ static CB l1_block[NR_CL1_BLOCK];
 static CB l2_block[NR_CL2_BLOCK];
 static CB tlb_entry[NR_TLBE];
 Cache l1, l2;
+const Caches caches = {
+    {
+        cache_read, 
+        cache_write, 
+        cache_all_refresh
+    }, {
+        tlb_read,
+        tlb_replace,
+        tlb_flush
+    }
+};
 
 //stand-alone
 static CB *normal_check_hit(CB *cb_lst, size_t len, uint32_t _tag) {
@@ -231,15 +250,13 @@ void init_cache() {
 }
 
 //main
-uint32_t cache_read(hwaddr_t addr, size_t len, bool *hit) {
+uint32_t cache_read(hwaddr_t addr, size_t len) {
     uint32_t val = 0;
 
     int of = GET_CO(addr) + len - CB_SIZE;
     if (of > 0) {
-        bool hit_l, hit_r;
-        val += cache_read(addr, len - of, &hit_l);
-        val += cache_read(addr + len - GET_CO(addr + len), of, &hit_r) << ((len - of) << 3);
-        *hit = hit_l && hit_r;
+        val += cache_read(addr, len - of);
+        val += cache_read(addr + len - GET_CO(addr + len), of) << ((len - of) << 3);
         return val;
     }
 
@@ -248,18 +265,15 @@ uint32_t cache_read(hwaddr_t addr, size_t len, bool *hit) {
     if (hit_l1 == 0) {
         val = l2.read(&l2, addr, len, &hit_l2);
     } else {
-        *hit = true;
         return val;
     }
     if (hit_l2 != 0) {
         l1.read_replace(&l1, addr);
-        *hit = true;
         return val;
-    } else {
-        l2.read_replace(&l2, addr);
-        *hit = false;
-        return 0;
     }
+    l2.read_replace(&l2, addr);
+    cache_read(addr, len);
+    return 0;
 }
 
 //main
@@ -303,7 +317,7 @@ uint32_t tlb_read(lnaddr_t addr, bool *hit) {
         return 0;
     }
     *hit = true;
-    return dst_cb->read(dst_cb, 0, 4);
+    return dst_cb->read(dst_cb, 0, sizeof(hwaddr_t));
 }
 
 //main

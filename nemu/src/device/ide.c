@@ -1,5 +1,6 @@
 #include "common.h"
 #include "memory/memory.h"
+#include "memory/cache.h"
 #include "device/port-io.h"
 #include "device/i8259.h"
 
@@ -90,8 +91,7 @@ void bmr_io_handler(ioaddr_t addr, size_t len, bool is_write) {
 				/* DMA start command */
 				if(bmr_base[0] & 0x8) {
 					/* DMA read */
-					// extern void cache_all_refresh();
-					// cache_all_refresh();
+
 					/* the address of Physical Region Descriptor Table */
 					hwaddr_t prdt_addr = *(uint32_t *)(bmr_base + 4);
 
@@ -112,6 +112,7 @@ void bmr_io_handler(ioaddr_t addr, size_t len, bool is_write) {
 
 					/* finish */
 					ide_port_base[7] = 0x40;
+					// caches.std.refresh();
 					i8259_raise_intr(IDE_IRQ);
 				}
 				else {
